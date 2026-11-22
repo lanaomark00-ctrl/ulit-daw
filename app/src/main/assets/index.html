@@ -1,0 +1,697 @@
+<title>Smart KTV Piano 4K</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600&family=Roboto:wght@400;500;700&display=swap">
+<style>
+/* Layout: one portrait phone column (like the Android app), toolbar + scrollable tabs + list + bottom action bar; centred on wide screens/TV */
+:root{
+  --bg:#1f1f1f; --bar:#3e50b4; --bar-dark:#303f9f; --cyan:#46f7fd; --pink:#ff4081;
+  --fg:#ffffff; --dim:#9aa0b4; --row:#272a33; --line:#363a48; --sky:#00aaee;
+  --font:'Roboto',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:#101114;color:var(--fg);font-family:var(--font);font-size:15px;
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+svg{width:24px;height:24px;fill:currentColor;flex:none}
+#app{position:relative;height:100%;max-width:440px;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px #000,0 0 60px #0008}
+.bar{background:var(--bar);height:56px;display:flex;align-items:center;gap:4px;padding:0 6px;flex:none}
+.bar h1{font-size:19px;font-weight:500;margin:0 0 0 6px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;position:relative}
+.ib:active{background:#fff2}
+.badge{position:absolute;top:4px;right:2px;background:var(--pink);font-size:11px;min-width:17px;height:17px;border-radius:9px;display:grid;place-items:center;padding:0 4px;font-weight:700}
+.tabs{display:flex;overflow-x:auto;background:var(--bg);border-bottom:1px solid var(--cyan);flex:none;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:14px 16px 12px;font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--cyan);border-bottom-color:var(--cyan)}
+.content{flex:1;overflow-y:auto;min-height:0;position:relative}
+.list{list-style:none;margin:0;padding:0}
+.song{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 14px;border-bottom:1px solid #2b2e38;min-height:64px;cursor:pointer}
+.song.sel{background:var(--bar)}
+.song .no{width:58px;font-size:20px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums}
+.song.sel .no{color:#fff}
+.song .tx{flex:1;min-width:0}
+.song .t{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .a{font-size:13px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song.sel .a{color:#dfe3ff}
+.star{color:#5a5f73}.star.on{color:#ffc107}
+.np{display:flex;align-items:center;gap:10px;background:#15171d;border-bottom:1px solid var(--line);padding:6px 6px 6px 14px;flex:none;cursor:pointer}
+.np .tx{flex:1;min-width:0}.np .t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np .pg{height:3px;background:#333;margin-top:5px;border-radius:2px;overflow:hidden}.np .pg i{display:block;height:100%;background:var(--cyan)}
+.actions{display:flex;background:var(--bar);flex:none;transform:translateY(0);padding-bottom:env(safe-area-inset-bottom,0px)}
+.actions[hidden]{display:none}
+.actions button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:11px}
+.actions button:active{background:#fff2}
+.fab{position:absolute;right:16px;bottom:16px;width:56px;height:56px;border-radius:50%;background:var(--pink);display:grid;place-items:center;box-shadow:0 4px 10px #0008}
+.empty{padding:48px 28px;text-align:center;color:var(--dim);line-height:1.5}
+/* drawer */
+.scrim{position:absolute;inset:0;background:#000a;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer{position:absolute;top:0;bottom:0;left:0;width:78%;background:#191b21;z-index:21;transform:translateX(-102%);transition:transform .22s;display:flex;flex-direction:column;overflow-y:auto}
+.open .scrim{opacity:1;pointer-events:auto}.open .drawer{transform:none}
+.dh{background:var(--bar);padding:28px 18px 18px;display:flex;flex-direction:column;gap:6px}
+.dh b{font-size:22px}.dh span{font-size:13px;color:#dfe3ff}
+.nav{display:flex;align-items:center;gap:20px;width:100%;padding:14px 18px;text-align:left;color:#cfd3e3}
+.nav[aria-current=true]{background:#252a44;color:var(--cyan)}
+.nav hr{display:none}
+.sep{height:1px;background:var(--line);margin:6px 0}
+/* splash/connect */
+.setup{flex:1;overflow-y:auto;background:radial-gradient(120% 60% at 50% 0%,#2a3350,#171c2b 70%);display:flex;flex-direction:column;align-items:center;padding:36px 28px calc(28px + env(safe-area-inset-bottom,0px));gap:12px}
+.setup .brand{display:flex;flex-direction:column;align-items:center;gap:6px;margin:18px 0 10px}
+.setup .brand svg{width:96px;height:96px;fill:#eee}
+.setup .brand b{font-size:34px;letter-spacing:.02em}
+.setup .brand span{font-size:12px;letter-spacing:.35em;color:#b8bed2;text-transform:uppercase}
+.setup label{font-size:24px;font-weight:500;margin-top:22px}
+.sel{position:relative;width:100%}
+.sel select{appearance:none;width:100%;background:#000;color:#fff;border:1px solid #2a2d38;border-radius:2px;font:inherit;font-size:20px;padding:18px 56px 18px 18px;text-align:center;text-align-last:center}
+.sel::after{content:"";position:absolute;right:20px;top:50%;width:12px;height:12px;border-right:3px solid #fff;border-bottom:3px solid #fff;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.setup .next{margin-top:auto;align-self:flex-end;font-size:28px;color:#c9ccd6;padding:14px 8px;letter-spacing:.04em}
+.splash{flex:1;background:var(--sky);display:grid;place-content:center;justify-items:center;gap:22px;text-align:center}
+.splash .circle{width:210px;height:210px;border-radius:50%;background:#58cdff;display:grid;place-items:center;box-shadow:inset 0 -10px 0 #0c9bd6}
+.logo{font-size:44px;font-weight:700;letter-spacing:-.02em}
+.page{padding:18px;display:flex;flex-direction:column;gap:14px}
+.page p{margin:0;color:var(--dim);line-height:1.5;font-size:14px}
+.card{background:var(--row);border-radius:6px;padding:12px 14px}
+.pl{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px;background:var(--row);border-radius:6px;border:1px solid transparent}
+.pl:hover,.pl:focus-visible{border-color:var(--cyan)}
+.pl .n{font-weight:500}.pl .s{font-size:12px;color:var(--dim)}
+.tag{font-size:11px;font-weight:700;background:var(--cyan);color:#06222b;border-radius:3px;padding:2px 6px;margin-left:6px;letter-spacing:.03em}
+.btn{background:var(--bar);padding:12px 18px;border-radius:4px;font-weight:500;text-transform:uppercase;font-size:13px;letter-spacing:.05em;text-align:center}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--cyan)}
+.btn.pink{background:var(--pink)}
+.row{display:flex;gap:10px;align-items:center}.row>*{min-width:0}
+.pin{display:flex;gap:10px;justify-content:center}
+.pin i{width:48px;height:56px;border-radius:6px;background:var(--row);border:1px solid var(--line);display:grid;place-items:center;font-size:26px;font-style:normal;font-weight:700}
+.pin i.cur{border-color:var(--cyan)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pad button{background:var(--row);border-radius:8px;height:52px;font-size:22px;font-weight:500}
+.pad button:active{background:var(--bar)}
+.pad .fn{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--cyan)}
+.disp{background:#111;border:1px solid var(--line);border-radius:6px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;min-height:62px}
+.disp b{font-size:28px;letter-spacing:.14em;color:var(--cyan);font-variant-numeric:tabular-nums}
+.disp span{font-size:13px;color:var(--dim);text-align:right;max-width:55%}
+.dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,64px);gap:6px;justify-content:center}
+.dpad button{background:var(--row);border-radius:50%;display:grid;place-items:center}
+.dpad button:active{background:var(--bar)}
+.dpad .ok{background:var(--bar);font-weight:700}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tile{background:var(--row);border-radius:8px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;text-align:center}
+.tile.on{background:var(--bar)}
+.tile:active{filter:brightness(1.3)}
+.step{display:flex;align-items:center;gap:10px;background:var(--row);border-radius:8px;padding:6px 8px}
+.step .l{flex:1;font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.step .v{min-width:44px;text-align:center;font-size:18px;font-weight:700;color:var(--cyan);font-variant-numeric:tabular-nums}
+.step button{width:40px;height:40px;border-radius:50%;background:var(--bar);display:grid;place-items:center}
+.seg{display:flex;background:var(--row);border-radius:8px;padding:3px;gap:3px}
+.seg button{flex:1;padding:10px 4px;border-radius:6px;font-size:13px}
+.seg button[aria-pressed=true]{background:var(--bar)}
+h2{font-size:12px;margin:6px 0 -4px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:500}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv span:first-child{color:var(--dim)}
+textarea,input[type=text]{width:100%;background:var(--row);border:1px solid var(--line);border-radius:6px;color:var(--fg);font:inherit;padding:12px}
+textarea{min-height:110px;resize:vertical}
+.sw{width:46px;height:26px;border-radius:13px;background:#555;position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw[aria-checked=true]{background:var(--cyan)}.sw[aria-checked=true]::after{transform:translateX(20px);background:#06222b}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;display:block}
+.photos .ph{aspect-ratio:1;background:var(--row);border-radius:4px;display:grid;place-items:center}
+.photos .on{outline:3px solid var(--cyan)}
+.modal{position:absolute;inset:0;background:#000b;z-index:40;display:grid;place-items:center;padding:24px}
+.dlg{background:#2b2e38;border-radius:8px;padding:20px;width:100%;display:flex;flex-direction:column;gap:16px}
+.dlg .acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.dlg .acts button{padding:10px 14px;color:var(--cyan);font-weight:500;text-transform:uppercase;font-size:13px}
+.toast{position:absolute;left:16px;right:16px;bottom:76px;background:#323232;padding:12px 16px;border-radius:4px;z-index:50;font-size:14px;animation:tin .2s}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+.score{text-align:center;padding:30px 20px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.score .big{font-size:96px;font-weight:700;color:var(--cyan);line-height:1;font-variant-numeric:tabular-nums}
+.rank{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #2b2e38}
+.rank b{width:30px;color:var(--cyan);font-size:18px}.rank .tx{flex:1;min-width:0}.rank .sc{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.spin{width:36px;height:36px;border:4px solid #fff3;border-top-color:var(--cyan);border-radius:50%;animation:sp 1s linear infinite;margin:auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* ===== Platinum-style skin (Piano 4K model) ===== */
+.plat{--bar:#20263a;--navy:#20263a;--navy2:#272d3f;--btn:#283043;--font:'Exo 2','Roboto',system-ui,sans-serif;font-family:var(--font)}
+.plat .bar{background:var(--navy)}
+.plat .tab[aria-selected=true]{color:#fff;border-bottom-color:#fff}
+.plat .tabs{border-bottom-color:#3a4259}
+.phead{background:var(--navy);padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px;flex:none}
+.prow{display:flex;align-items:center;gap:8px;min-width:0}
+.prow .ib svg{width:30px;height:30px}
+.wm{display:flex;flex-direction:column;line-height:1;font-weight:600;font-size:18px;letter-spacing:.01em;white-space:nowrap}
+.wm small{font-size:9px;letter-spacing:.2em;font-weight:500}
+.linkb{display:flex;align-items:center;gap:8px;text-align:left;margin-left:auto;min-width:0}
+.linkb svg{width:38px;height:38px}.linkb b{display:block;font-weight:500;font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}.linkb span{font-size:12px;color:#c8cce0}
+.pnow{display:flex;align-items:center;gap:8px;flex:1;min-width:0;text-align:left}
+.pnow .circ{width:30px;height:30px;border-radius:50%;background:#fff;color:var(--navy);display:grid;place-items:center;flex:none}
+.pnow .circ svg{width:20px;height:20px}
+.pnow span{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.psel{position:relative;flex:none}
+.psel select{appearance:none;background:#000;color:#fff;border:0;font:inherit;font-size:13px;height:34px;padding:0 30px 0 12px;border-radius:2px;max-width:140px}
+.psel::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.pq{flex:1;min-width:0;background:#7f8187;border:0;border-radius:2px;height:34px;color:#fff;font:inherit;padding:0 10px}
+.pq::placeholder{color:#ddd}
+.pwrap{flex:1;min-height:0;position:relative;background:#fff;color:#000;display:flex}
+.plist{list-style:none;margin:0;padding:0 6px 0 0;overflow-y:auto;flex:1;min-width:0;scroll-behavior:smooth}
+.pr{display:flex;align-items:center;gap:10px;padding:10px 6px 10px 12px;border-bottom:1px solid #bbb;margin-left:10px;cursor:pointer;min-height:66px}
+.pr:active{background:#e8ecf5}
+.pr .no{width:54px;text-align:center;font-size:18px;font-variant-numeric:tabular-nums}
+.pr .tx{flex:1;min-width:0}.pr .t{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pr .a{font-size:15px;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bdg{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:700;flex:none;letter-spacing:-.02em}
+.bdg.midi{background:#1b6a95}.bdg.chorus{background:#171c47}.bdg.train{background:#1264ff}
+.hrt{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:8px;letter-spacing:.04em;color:#222;width:52px}
+.hrt svg{width:32px;height:32px;fill:#b32d2d}
+.rail{width:28px;flex:none;margin:6px 4px 6px 0;background:#6f7e9c;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between;padding:3px 0}
+.rail button{color:#fff;font-size:12px;font-weight:500;line-height:1;flex:1;display:grid;place-items:center}
+.gtabs{display:flex;overflow-x:auto;background:var(--navy2);flex:none;scrollbar-width:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+.gtabs::-webkit-scrollbar{display:none}
+.gtabs button{padding:18px 12px;font-size:20px;color:#7d86a0;white-space:nowrap}
+.gtabs button[aria-selected=true]{color:#fff}
+.pfoot{background:var(--navy);flex:none;display:flex;justify-content:center;align-items:center;gap:10px;padding:18px 10px calc(18px + env(safe-area-inset-bottom,0px));font-size:19px}
+.pfoot svg{width:22px;height:22px}
+.phead.slim{flex-direction:column;gap:6px}
+.ptitle{display:flex;align-items:center;min-height:56px}.ptitle .ib svg{width:32px;height:32px}
+.ptitle h1{flex:1;text-align:center;margin:0 44px 0 0;font-size:24px;font-weight:400}
+.pconn{flex:1;overflow-y:auto;background:#e5e5e5;color:#000;display:flex;flex-direction:column}
+.circs{display:grid;grid-template-columns:repeat(3,1fr);padding:44px 6px 36px;gap:6px}
+.circs button{display:flex;flex-direction:column;align-items:center;gap:14px;font-size:14px;color:#000}
+.circs i{width:min(20vw,86px);height:min(20vw,86px);border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal}
+.circs svg{width:56%;height:56%;fill:#14161d}
+.pcard{background:#fff;border-bottom:1px solid #bbb;display:flex;align-items:center;gap:16px;padding:14px 16px;width:100%;text-align:left}
+.pcard .ico{width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;color:#999;flex:none}
+.pcard .ico svg{width:50px;height:36px;fill:#909090}
+.pcard .box{width:64px;height:22px;background:#3a3d44;border-radius:3px;display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.pcard .box i{width:20px;height:2px;background:#ddd;display:block;box-shadow:0 5px #ddd}
+.pcard .nm{flex:1;min-width:0}.pcard .nm b{font-weight:400;font-size:18px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pcard .nm span{color:#e53935;font-size:15px}
+.pcard .st{display:flex;flex-direction:column;gap:8px;align-items:stretch;flex:none}
+.pcard .st em{font-style:normal;color:#2196f3;font-size:20px}
+.pcard .del{background:#f44336;color:#000;padding:8px 14px;display:flex;gap:8px;align-items:center;font-size:18px}
+.pcard .del svg{width:20px;height:20px}
+.rdisp{background:#20263a;padding:12px 10px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
+.rdisp .brand2{display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:600;letter-spacing:.02em}
+.rdisp .brand2 svg{width:44px;height:44px;fill:#fff}
+.rdisp .brand2 b{font-size:18px}.rdisp .brand2 small{font-size:14px;letter-spacing:.1em}
+.rscr{background:#0f0f10;border-radius:4px;width:calc(100% - 40px);min-height:72px;padding:6px 14px;font-size:24px;line-height:1.15}
+.rscr small{display:block;font-size:14px;color:#9aa0b4;margin-top:6px}
+.rbody{flex:1;overflow-y:auto;background:#1e2029;padding:14px 12px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.rg{display:grid;gap:6px}
+.rg.c4{grid-template-columns:1.9fr 1fr 1fr 1fr}.rg.c2{grid-template-columns:1fr 1fr}.rg.c44{grid-template-columns:repeat(4,1fr)}
+.rb{background:var(--btn);border-radius:10px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:14px;letter-spacing:.02em;text-align:center;padding:6px 4px;color:#fff;text-transform:uppercase}
+.rb:active{filter:brightness(1.4)}
+.rb.num{font-size:28px;font-weight:400}
+.rb.on{background:#3d4f8f}
+.rb svg{width:26px;height:26px}.rb .pm{font-size:34px;line-height:.9}.rb .mn{width:30px;height:4px;background:#fff;border-radius:1px;margin:11px 0}
+.drawer.pd{width:83%;background:#f5f1f8;color:#20263a}
+.pd .pdh{background:#ececec;border-bottom:1px solid #c3c3cc;padding:56px 20px 54px;display:grid;place-items:center;width:100%}
+.pd .pdh .wm{align-items:center;color:#20263a;font-size:34px;gap:6px;text-align:center}.pd .pdh .wm small{font-size:15px;letter-spacing:.4em;padding-left:.4em}
+.pd .pdl{background:#ececec;padding-bottom:0}
+.pdi{display:flex;align-items:center;gap:22px;width:calc(100% - 28px);margin:0 14px;padding:22px 8px;border-bottom:2px solid #c3c3cc;text-align:left;font-size:19px;letter-spacing:.04em;color:#20263a;min-height:70px}
+.pdi svg{width:36px;height:36px;fill:none;stroke:#20263a;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.pdi .ch{width:22px;height:22px;margin-left:auto;stroke-width:2.4;transition:transform .15s}
+.pdi[aria-expanded=true] .ch{transform:rotate(180deg)}
+.pdi .tx{flex:1}
+.pdx{background:#e4e4ea;margin:0 14px;padding:6px 14px 10px;font-size:15px}
+.pdx .kv{border-color:#c3c3cc;color:#20263a;padding:10px 0}.pdx .kv span:first-child{color:#555}
+.pdx button.lg{display:flex;justify-content:space-between;width:100%;padding:12px 2px;font-size:16px;color:#20263a;border-bottom:1px solid #c9c9d2}
+.pdx button.lg svg{width:20px;height:20px;fill:none;stroke:#20263a;stroke-width:2.4}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (min-width:760px){body{background:#0b0c0f}#app{height:min(100%,900px);margin-block:auto;border-radius:10px}html,body{display:flex;align-items:center}}
+</style>
+<div id="app"></div>
+<script>
+"use strict";
+/* ---------- icons ---------- */
+const P={menu:"M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",search:"M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",star:"M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z",starb:"M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z",play:"M8 5v14l11-7z",pause:"M6 19h4V5H6v14zm8-14v14h4V5h-4z",stop:"M6 6h12v12H6z",mic:"M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z",close:"M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",add:"M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",up:"M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z",down:"M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z",left:"M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z",right:"M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z",del:"M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",home:"M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",list:"M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z",vol:"M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z",mute:"M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z",next:"M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z",prev:"M6 6h2v12H6zm3.5 6l8.5 6V6z",wifi:"M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 00-6 0zm-4-4l2 2a7.074 7.074 0 0110 0l2-2C15.14 9.14 8.87 9.14 5 13z",msg:"M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z",rec:"M12 7a5 5 0 100 10 5 5 0 000-10zm0-5a10 10 0 100 20 10 10 0 000-20z",user:"M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z",cog:"M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",remote:"M15 9H9c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V10c0-.55-.45-1-1-1zm-3 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM7.05 6.05l1.41 1.41C9.37 6.56 10.62 6 12 6s2.63.56 3.54 1.46l1.41-1.41C15.68 4.78 13.93 4 12 4s-3.68.78-4.95 2.05zM12 0C8.96 0 6.21 1.23 4.22 3.22l1.41 1.41C7.26 3.01 9.51 2 12 2s4.74 1.01 6.36 2.64l1.41-1.41C17.79 1.23 15.04 0 12 0z",qr:"M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-12v8h8V3h-8zm6 6h-4V5h4v4zm0 10h2v2h-2zm-6-6h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm2 2h2v2h-2zm2-2h2v2h-2zm0-4h2v2h-2zm2 2h2v2h-2z",repeat:"M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z",shuffle:"M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z",photo:"M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z",clap:"M2 20h2v-8H2v8zm20-9c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13.17 2 6.59 8.59C6.22 8.95 6 9.45 6 10v9c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z",info:"M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z",bgv:"M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z",tv:"M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z",heart:"M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z",heartf:"M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",eq:"M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z",note:"M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z",grid:"M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z",check:"M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"};
+const ic=n=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n]}"/></svg>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- song library (simulated karaoke box catalogue) ---------- */
+const CAT={
+ philippines:[["Kahit Maputi Na Ang Buhok Ko","Rey Valera"],["Ikaw","Yeng Constantino"],["Pare Ko","Eraserheads"],["Hindi Kita Malilimutan","Basil Valdez"],["Ngayon at Kailanman","Basil Valdez"],["Tadhana","Up Dharma Down"],["Kung Ako Na Lang Sana","Bituin Escalante"],["Bakit Ngayon Ka Lang","Jaya"]],
+ korea:[["Gangnam Style","PSY"],["Dynamite","BTS"],["Ditto","NewJeans"],["Love Dive","IVE"],["Gee","Girls' Generation"],["Fantastic Baby","BIGBANG"],["Spring Day","BTS"],["Palette","IU"]],
+ china:[["月亮代表我的心","Teresa Teng"],["小苹果","Chopsticks Brothers"],["后来","Rene Liu"],["七里香","Jay Chou"],["告白气球","Jay Chou"],["突然好想你","Mayday"],["红豆","Faye Wong"],["甜蜜蜜","Teresa Teng"]],
+ japan:[["Lemon","Kenshi Yonezu"],["Pretender","Official HIGE DANdism"],["Marigold","Aimyon"],["Gurenge","LiSA"],["Yoru ni Kakeru","YOASOBI"],["Kaibutsu","YOASOBI"],["Subtitle","Official HIGE DANdism"],["Idol","YOASOBI"]],
+ spain:[["Bailando","Enrique Iglesias"],["Despacito","Luis Fonsi"],["La Bamba","Ritchie Valens"],["Hips Don't Lie","Shakira"],["Vivir Mi Vida","Marc Anthony"],["Procura","Rocío Dúrcal"],["Dónde Están Los Ladrones","Shakira"],["Livin' la Vida Loca","Ricky Martin"]],
+ india:[["Tum Hi Ho","Arijit Singh"],["Kal Ho Naa Ho","Sonu Nigam"],["Chaiyya Chaiyya","Sukhwinder Singh"],["Kesariya","Arijit Singh"],["Jai Ho","A. R. Rahman"],["Channa Mereya","Arijit Singh"],["Tujhe Dekha To","Kumar Sanu"],["Munna Badnaam Hua","Badshah"]]
+};
+const REG=[["philippines","Philippines"],["korea","Korea"],["china","China"],["japan","Japan"],["spain","Spain"],["india","India"]];
+const SONGS=[];let _n=10100;
+REG.forEach(([k])=>CAT[k].forEach((s,i)=>{_n+=37+(i*13)%29;SONGS.push({no:String(_n),t:s[0],a:s[1],r:k,dur:170+((_n*7)%90)})}));
+[["gospel","Amazing Grace","Traditional"],["gospel","How Great Thou Art","Hymn"],["gospel","10,000 Reasons","Matt Redman"],["gospel","Open the Eyes of My Heart","Paul Baloche"],
+ ["kids","Twinkle Twinkle Little Star","Traditional"],["kids","Bahay Kubo","Traditional"],["kids","Baby Shark","Pinkfong"],["kids","Itsy Bitsy Spider","Traditional"],
+ ["regional","Dandansoy","Traditional Visayan"],["regional","Sarung Banggi","Traditional Bicolano"],["regional","Atin Cu Pung Singsing","Kapampangan Folk"],["regional","Paruparong Bukid","Traditional"]
+].forEach((x,i)=>{_n+=211+i*17;SONGS.push({no:String(_n),t:x[1],a:x[2],r:"philippines",g:x[0],dur:150+(i*11)%80})});
+SONGS.forEach(x=>{const n=+x.no;x.g=x.g||"pop";x.type=n%7===0?"chorus":n%11===0?"train":"midi";x.vol=1+n%3});
+const byNo=n=>SONGS.find(s=>s.no===n);
+const LATEST=[...SONGS].sort((a,b)=>b.no-a.no).slice(0,16);
+
+/* ---------- simulated players ---------- */
+const MODELS=[{id:"p4k",name:"Piano 4K | Alpha 2",pro:true},{id:"ktv",name:"Smart KTV",pro:false}];
+const PLAYERS=[
+ {id:"p4k",model:"Piano 4K | Alpha 2",name:"Piano4K-Alpha2-2160",sub:"Platinum Link · 192.168.0.31 · 4K output",code:"2160",pro:true},
+ {id:"ktv",model:"Smart KTV",name:"Smart-KTV-4821",sub:"Smart KTV box · 192.168.0.24",code:"4821",pro:false}
+];
+
+/* ---------- state ---------- */
+const S={view:"splash",tab:"search",drawer:false,country:"philippines",model:"p4k",player:null,sel:new Set(),queue:[],now:null,playing:false,pos:0,recording:false,
+ favs:new Set(),recs:[],users:[],board:[],lastScore:null,remoteTab:"screen",searchNo:"",remoteNo:"",pin:"",candidate:null,scanning:false,favMode:"reserve",msgTab:"text",
+ cfg:{key:0,tempo:0,treble:0,bass:0,echo:5,mic:6,vol:8,gender:"orig",vocal:false,mute:false,repeat:"off",score:true,bgv:"video",out4k:true,ap:false,lang:"English"},
+ photo:null,photos:[],toast:"",modal:null,saved:[],found:[],pcountry:"",psort:"title",pvol:"",pgenre:"all",pq:"",ssearch:false,exp:""};
+try{const d=JSON.parse(localStorage.getItem("ktv")||"{}");if(d.favs)S.favs=new Set(d.favs);if(d.recs)S.recs=d.recs;if(d.users)S.users=d.users;if(d.board)S.board=d.board;if(d.saved)S.saved=d.saved}catch(e){}
+const save=()=>{try{localStorage.setItem("ktv",JSON.stringify({favs:[...S.favs],recs:S.recs,users:S.users,board:S.board,saved:S.saved}))}catch(e){}};
+const $app=document.getElementById("app");
+let toastT;const toast=m=>{S.toast=m;clearTimeout(toastT);toastT=setTimeout(()=>{S.toast="";render()},2200);render()};
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+const cap=()=>S.player&&S.player.pro;
+
+/* ---------- box simulation ---------- */
+function startNext(first){
+  if(!S.queue.length){S.now=null;S.playing=false;S.pos=0;return}
+  S.now=S.queue.shift();S.pos=0;S.playing=true;
+}
+function reserve(songs,first){
+  songs=songs.filter(Boolean);if(!songs.length)return;
+  const items=songs.map(s=>({...s,rec:S.recording,id:Math.random().toString(36).slice(2)}));
+  if(first)S.queue.unshift(...items);else S.queue.push(...items);
+  if(!S.now)startNext();
+}
+function finish(){
+  const done=S.now;if(!done)return;
+  if(done.rec){S.recs.unshift({id:done.id,no:done.no,t:done.t,a:done.a,dur:done.dur,date:new Date().toLocaleString()});save()}
+  if(cap()&&S.cfg.score){const sc=Math.round(62+Math.random()*37);S.lastScore={...done,sc};S.board.unshift({t:done.t,a:done.a,sc,date:new Date().toLocaleDateString()});S.board=S.board.slice(0,30);save();if(S.view!=="score"){go("score");}}
+  const rp=S.cfg.repeat;
+  if(rp==="one"){S.pos=0;return}
+  if(rp==="all")S.queue.push({...done,id:Math.random().toString(36).slice(2)});
+  if(rp==="random"&&S.queue.length>1){const i=Math.floor(Math.random()*S.queue.length);const [x]=S.queue.splice(i,1);S.queue.unshift(x)}
+  startNext();
+}
+setInterval(()=>{if(S.playing&&S.now){S.pos+=1+S.cfg.tempo*0.05;if(S.pos>=S.now.dur){finish()}render(true)}},1000);
+
+/* ---------- navigation ---------- */
+const hist=[];
+function go(v,opts){if(S.view!==v)hist.push(S.view);S.view=v;S.drawer=false;Object.assign(S,opts||{});render()}
+function back(){if(S.view==="connect"&&!S.player){return}const p=hist.pop();if(p)S.view=p;else S.view="home";render()}
+const TITLES={home:"Smart KTV",remote:"Remote control",reserved:"Reserved songs",message:"Message",record:"Record",usersong:"User song",favorite:"Favorite song",score:"Score",settings:"Settings",connect:"Connection",setup:"Choose country and model",news:"News & updates",firmware:"Firmware info",songdata:"Song data info",appinfo:"App info",network:"Network setting",language:"Language",board:"Score board"};
+const TABS=[["search","Search"],["latest","Latest song"],["favorite","Favorite song"],...REG.map(([k,n])=>[k,n])];
+
+function listFor(tab){
+  if(tab==="latest")return LATEST;
+  if(tab==="favorite")return SONGS.filter(s=>S.favs.has(s.no));
+  return SONGS.filter(s=>s.r===tab);
+}
+function songRow(s,opt={}){
+  const sel=S.sel.has(s.no);
+  return `<li><div class="song${sel?" sel":""}" role="button" tabindex="0" data-act="pick" data-no="${s.no}">
+   <div class="no">${s.no}</div><div class="tx"><div class="t">${esc(s.t)}</div><div class="a">${esc(s.a)}</div></div>
+   <button class="ib star${S.favs.has(s.no)?" on":""}" data-act="fav" data-no="${s.no}" aria-label="Favorite">${ic(S.favs.has(s.no)?"star":"starb")}</button></div></li>`;
+}
+
+/* ---------- views ---------- */
+function header(){
+  const home=S.view==="home";
+  const left=home||S.view==="remote"||S.view==="favorite"||S.view==="message"||S.view==="record"||S.view==="usersong"||S.view==="settings"
+   ?`<button class="ib" data-act="drawer" aria-label="Menu">${ic("menu")}</button>`:`<button class="ib" data-act="back" aria-label="Back">${ic("left")}</button>`;
+  const rc=S.queue.length+(S.now?1:0);
+  return `<div class="bar">${left}<h1>${TITLES[S.view]||"Smart KTV"}</h1>
+   <button class="ib" data-act="tab-search" aria-label="Search">${ic("search")}</button>
+   <button class="ib" data-act="go" data-v="reserved" aria-label="Reserved list">${ic("list")}${rc?`<span class="badge">${rc}</span>`:""}</button>
+   <button class="ib" data-act="go" data-v="remote" aria-label="Remote control">${ic("remote")}</button></div>`;
+}
+function nowStrip(){
+  if(!S.now)return "";
+  return `<div class="np" data-act="go" data-v="remote" role="button" tabindex="0"><div class="tx"><div class="t">${S.playing?"Now playing":"Paused"} · ${S.now.no} ${esc(S.now.t)}</div><div class="pg"><i style="width:${Math.min(100,S.pos/S.now.dur*100)}%"></i></div></div>
+   <button class="ib" data-act="playpause" aria-label="Play or pause">${ic(S.playing?"pause":"play")}</button></div>`;
+}
+function keypad(prefix,withFn){
+  return `<div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-act="${prefix}-num" data-n="${n}">${n}</button>`).join("")}
+  <button class="fn" data-act="${prefix}-clear">Clear</button><button data-act="${prefix}-num" data-n="0">0</button><button class="fn" data-act="${prefix}-back">${ic("left")}</button></div>`;
+}
+function vSearch(){
+  const s=byNo(S.searchNo);
+  return `<div class="page">
+   <div class="disp"><b>${S.searchNo||"· · · · ·"}</b><span>${s?esc(s.t)+"<br>"+esc(s.a):(S.searchNo?"No song with that number":"Enter a song number")}</span></div>
+   ${keypad("s")}
+   <div class="grid2"><button class="btn" data-act="s-reserve">Reserve</button><button class="btn pink" data-act="s-first">1st reserve</button></div>
+   <h2>Search by title or artist</h2>
+   <input type="text" id="q" placeholder="Search song or artist" value="${esc(S.q||"")}" autocomplete="off">
+   <ul class="list" id="qres">${qres()}</ul></div>`;
+}
+function qres(){
+  const q=(S.q||"").trim().toLowerCase();if(!q)return "";
+  const r=SONGS.filter(s=>(s.t+" "+s.a+" "+s.no).toLowerCase().includes(q)).slice(0,20);
+  return r.length?r.map(songRow).join(""):`<li class="empty">No results for “${esc(S.q)}”.</li>`;
+}
+function vHome(){
+  const tabs=`<div class="tabs" role="tablist">${TABS.map(([k,n])=>`<button class="tab" role="tab" aria-selected="${S.tab===k}" data-act="tab" data-k="${k}">${n}</button>`).join("")}</div>`;
+  let body;
+  if(S.tab==="search")body=vSearch();
+  else{const l=listFor(S.tab);body=l.length?`<ul class="list">${l.map(songRow).join("")}</ul>`:`<div class="empty">${S.tab==="favorite"?"No favorites yet. Tap the star on any song.":"No songs."}</div>`}
+  return `${tabs}${nowStrip()}<div class="content" id="swipe">${body}</div>`;
+}
+function vRemote(){
+  const t=S.remoteTab,c=S.cfg;
+  const tabs=`<div class="tabs">${[["screen","Screen control"],["remote","Remote"],...(cap()?[["sound","Sound & effects"]]:[])].map(([k,n])=>`<button class="tab" role="tab" aria-selected="${t===k}" data-act="rtab" data-k="${k}">${n}</button>`).join("")}</div>`;
+  let b="";
+  const disp=`<div class="disp"><b>${S.remoteNo||(S.now?S.now.no:"·····")}</b><span>${S.now?esc(S.now.t)+"<br>"+fmt(S.pos)+" / "+fmt(S.now.dur):"Nothing playing"}</span></div>`;
+  if(t==="screen"){
+   b=`<div class="page">${disp}
+   <div class="dpad"><span></span><button data-act="nav" data-d="up" aria-label="Up">${ic("up")}</button><span></span>
+    <button data-act="nav" data-d="left" aria-label="Left">${ic("left")}</button><button class="ok" data-act="nav" data-d="ok">OK</button><button data-act="nav" data-d="right" aria-label="Right">${ic("right")}</button>
+    <span></span><button data-act="nav" data-d="down" aria-label="Down">${ic("down")}</button><span></span></div>
+   <div class="grid3"><button class="tile" data-act="prev">${ic("prev")}Prev</button><button class="tile" data-act="mute">${ic(c.mute?"mute":"vol")}${c.mute?"Unmute":"Mute"}</button><button class="tile" data-act="next">${ic("next")}Next</button>
+    <button class="tile" data-act="bgv">${ic("bgv")}BGV</button><button class="tile" data-act="r-reserve">${ic("add")}Reserve</button><button class="tile" data-act="r-first">${ic("up")}1st reserve</button></div></div>`;
+  }else if(t==="remote"){
+   b=`<div class="page">${disp}${keypad("r")}
+   <div class="grid3"><button class="tile" data-act="r-reserve">${ic("add")}Reserve</button><button class="tile" data-act="r-first">${ic("up")}1st reserve</button><button class="tile" data-act="r-cancel">${ic("close")}Cancel reserve</button></div>
+   <div class="grid3"><button class="tile" data-act="playpause">${ic(S.playing?"pause":"play")}${S.playing?"Pause":"Play"}</button><button class="tile" data-act="stop">${ic("stop")}Stop</button><button class="tile${S.recording?" on":""}" data-act="rec">${ic("rec")}${S.recording?"Recording on":"Record"}</button></div>
+   <div class="step"><span class="l">Volume</span><button data-act="adj" data-k="vol" data-d="-1" aria-label="Volume down">${ic("down")}</button><span class="v">${c.vol}</span><button data-act="adj" data-k="vol" data-d="1" aria-label="Volume up">${ic("up")}</button></div></div>`;
+  }else{
+   const stp=(k,l,min,max)=>`<div class="step"><span class="l">${l}</span><button data-act="adj" data-k="${k}" data-d="-1" data-min="${min}" data-max="${max}" aria-label="${l} down">${ic("down")}</button><span class="v">${c[k]>0&&(k==="key"||k==="tempo"||k==="treble"||k==="bass")?"+":""}${c[k]}</span><button data-act="adj" data-k="${k}" data-d="1" data-min="${min}" data-max="${max}" aria-label="${l} up">${ic("up")}</button></div>`;
+   b=`<div class="page">${disp}
+   <h2>Pitch & speed</h2>${stp("key","Key",-6,6)}${stp("tempo","Tempo",-6,6)}
+   <h2>Levels</h2>${stp("echo","Echo",0,10)}${stp("treble","Treble",-6,6)}${stp("bass","Bass",-6,6)}${stp("mic","Mic volume",0,10)}${stp("vol","Music volume",0,10)}
+   <h2>Voice</h2><div class="seg">${[["orig","Original"],["male","Male"],["female","Female"]].map(([k,n])=>`<button aria-pressed="${c.gender===k}" data-act="gender" data-k="${k}">${n}</button>`).join("")}</div>
+   <div class="grid3"><button class="tile${c.vocal?" on":""}" data-act="vocal">${ic("mic")}Vocal guide</button><button class="tile" data-act="clap">${ic("clap")}Applause</button><button class="tile${S.recording?" on":""}" data-act="rec">${ic("rec")}Record</button></div>
+   <h2>Repeat</h2><div class="seg">${[["off","Off"],["one","One"],["all","All"],["random","Random"]].map(([k,n])=>`<button aria-pressed="${c.repeat===k}" data-act="repeat" data-k="${k}">${n}</button>`).join("")}</div>
+   <h2>Background video</h2><div class="seg">${[["video","Video"],["photo","Photo"],["cam","Camera"]].map(([k,n])=>`<button aria-pressed="${c.bgv===k}" data-act="bgvmode" data-k="${k}">${n}</button>`).join("")}</div>
+   <div class="card row"><span style="flex:1">Scoring after each song</span><button class="sw" role="switch" aria-checked="${c.score}" data-act="tog" data-k="score" aria-label="Scoring"></button></div>
+   <div class="card row"><span style="flex:1">4K video output</span><button class="sw" role="switch" aria-checked="${c.out4k}" data-act="tog" data-k="out4k" aria-label="4K output"></button></div></div>`;
+  }
+  return `${tabs}${nowStrip()}<div class="content">${b}</div>`;
+}
+function vReserved(){
+  const rows=[];
+  if(S.now)rows.push(`<li><div class="song" style="background:#232a52"><div class="no">▶</div><div class="tx"><div class="t">${esc(S.now.t)}</div><div class="a">Now playing · ${fmt(S.pos)} / ${fmt(S.now.dur)}${S.now.rec?" · recording":""}</div></div><button class="ib" data-act="playpause" aria-label="Play or pause">${ic(S.playing?"pause":"play")}</button><button class="ib" data-act="next" aria-label="Skip">${ic("next")}</button></div></li>`);
+  S.queue.forEach((s,i)=>rows.push(`<li><div class="song"><div class="no">${s.no}</div><div class="tx"><div class="t">${esc(s.t)}</div><div class="a">${esc(s.a)}${s.rec?" · record":""}</div></div>
+   <button class="ib" data-act="qup" data-i="${i}" aria-label="Move up">${ic("up")}</button><button class="ib" data-act="qdown" data-i="${i}" aria-label="Move down">${ic("down")}</button><button class="ib" data-act="qdel" data-i="${i}" aria-label="Remove">${ic("del")}</button></div></li>`));
+  return `<div class="content">${rows.length?`<ul class="list">${rows.join("")}</ul>`:`<div class="empty">No songs reserved.<br>Pick songs on Home, then tap Reserve.</div>`}</div>
+  ${S.queue.length?`<div class="actions"><button data-act="qclear">${ic("del")}Clear all</button><button data-act="qshuffle">${ic("shuffle")}Shuffle</button></div>`:""}`;
+}
+function vFavorite(){
+  const m=S.favMode;
+  return `<div class="tabs">${[["reserve","Reserve mode"],["listen","Listen mode"]].map(([k,n])=>`<button class="tab" role="tab" aria-selected="${m===k}" data-act="favmode" data-k="${k}">${n}</button>`).join("")}</div>${nowStrip()}
+  <div class="content">${(()=>{const l=SONGS.filter(s=>S.favs.has(s.no));return l.length?`<ul class="list">${l.map(songRow).join("")}</ul>`:`<div class="empty">No favorite songs yet.<br>Tap the star next to a song to add it.</div>`})()}</div>`;
+}
+function vMessage(){
+  const t=S.msgTab;
+  const tabs=`<div class="tabs">${[["text","Text message"],["photo","Photo message"]].map(([k,n])=>`<button class="tab" role="tab" aria-selected="${t===k}" data-act="mtab" data-k="${k}">${n}</button>`).join("")}</div>`;
+  const b=t==="text"?`<div class="page"><input type="text" id="from" placeholder="Name" maxlength="20" value="${esc(S.from||"")}"><textarea id="msg" maxlength="80" placeholder="Message (up to 80 characters)">${esc(S.msg||"")}</textarea><p id="cnt">${(S.msg||"").length} / 80</p><button class="btn" data-act="sendmsg">Send to screen</button></div>`
+  :`<div class="page"><p>Choose a photo and send it to the karaoke screen.</p><label class="btn ghost" for="pf">Choose photos</label><input id="pf" type="file" accept="image/*" multiple hidden>
+   <div class="photos">${S.photos.length?S.photos.map((u,i)=>`<button data-act="pickphoto" data-i="${i}" aria-label="Photo ${i+1}"><img src="${u}" alt="" class="${S.photo===i?"on":""}"></button>`).join(""):[0,1,2].map(()=>`<div class="ph">${ic("photo")}</div>`).join("")}</div>
+   <button class="btn" data-act="sendphoto"${S.photo==null?' style="opacity:.5"':""}>Send photo</button></div>`;
+  return tabs+`<div class="content">${b}</div>`;
+}
+function vRecord(){
+  return `<div class="content">${S.recs.length?`<ul class="list">${S.recs.map((r,i)=>`<li><div class="song"><div class="no" style="color:var(--pink)">${ic("rec")}</div><div class="tx"><div class="t">${esc(r.t)}</div><div class="a">${esc(r.a)} · ${fmt(r.dur)} · ${esc(r.date)}</div></div>
+   <button class="ib" data-act="recplay" data-i="${i}" aria-label="Play recording">${ic("play")}</button><button class="ib" data-act="recdel" data-i="${i}" aria-label="Delete recording">${ic("del")}</button></div></li>`).join("")}</ul>`:`<div class="empty">No recordings.<br>Turn on Record in the bottom bar or the remote, then sing. Finished takes appear here.</div>`}</div>`;
+}
+function vUser(){
+  return `<div class="page"><p>Songs you added to this box. Add by number from the catalogue.</p>
+  <div class="row"><input type="text" id="un" inputmode="numeric" placeholder="Song number"><button class="btn" data-act="uadd">Add</button></div></div>
+  <div class="content" style="flex:1">${S.users.length?`<ul class="list">${S.users.map(n=>byNo(n)).filter(Boolean).map(s=>`<li><div class="song" data-act="pick" data-no="${s.no}"><div class="no">${s.no}</div><div class="tx"><div class="t">${esc(s.t)}</div><div class="a">${esc(s.a)}</div></div><button class="ib" data-act="udel" data-no="${s.no}" aria-label="Remove">${ic("del")}</button></div></li>`).join("")}</ul>`:`<div class="empty">No user songs yet.</div>`}</div>`;
+}
+function vScore(){
+  const L=S.lastScore;
+  const msg=!L?"":L.sc>=90?"Superstar!":L.sc>=80?"Great singing!":L.sc>=70?"Nice job!":"Keep practicing!";
+  return `<div class="content">${L?`<div class="score"><div style="color:var(--dim)">${esc(L.t)} · ${esc(L.a)}</div><div class="big">${L.sc}</div><div style="font-size:20px">${msg}</div><div class="row"><button class="btn" data-act="go" data-v="board">Score board</button><button class="btn ghost" data-act="back">Close</button></div></div>`:`<div class="empty">No score yet. Sing a song with scoring turned on.</div>`}</div>`;
+}
+function vBoard(){
+  const b=[...S.board].sort((a,b)=>b.sc-a.sc).slice(0,10);
+  return `<div class="content">${b.length?b.map((r,i)=>`<div class="rank"><b>${i+1}</b><div class="tx"><div class="t" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.t)}</div><div style="font-size:12px;color:var(--dim)">${esc(r.a)} · ${esc(r.date)}</div></div><div class="sc">${r.sc}</div></div>`).join(""):`<div class="empty">The board is empty.</div>`}</div>`;
+}
+function vSettings(){
+  const item=(v,i,t,s)=>`<button class="pl" data-act="go" data-v="${v}">${ic(i)}<div><div class="n">${t}</div><div class="s">${s}</div></div></button>`;
+  return `<div class="content"><div class="page">
+   ${item("setup","list","Country and model",(REG.find(r=>r[0]===S.country)||[0,""])[1]+" · "+MODELS.find(m=>m.id===S.model).name)}
+   ${item("connect","tv","Connect player",S.player?S.player.name:"Not connected")}
+   ${item("network","wifi","Network setting",S.cfg.ap?"AP mode":"Router (station) mode")}
+   ${item("language","info","Language",S.cfg.lang)}
+   ${item("songdata","list","Song data info",SONGS.length+" songs")}
+   ${item("firmware","cog","Firmware info",S.player?S.player.model:"—")}
+   ${item("news","msg","News & updates","What's new")}
+   ${item("appinfo","info","App info","Version 1.0.0")}</div></div>`;
+}
+function vSetup(){
+  const c=REG.map(([k,n])=>`<option value="${k}"${S.country===k?" selected":""}>${n.toUpperCase()}</option>`).join("");
+  const m=MODELS.map(x=>`<option value="${x.id}"${S.model===x.id?" selected":""}>${x.name}</option>`).join("");
+  return `<div class="setup"><div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${P.wifi}"/></svg><b>Smart KTV</b><span>Piano 4K ready</span></div>
+   <label for="country">Choose Country</label><div class="sel"><select id="country">${c}</select></div>
+   <label for="model">Choose Model</label><div class="sel"><select id="model">${m}</select></div>
+   <button class="next" data-act="setupnext">NEXT</button></div>`;
+}
+function vConnect(){
+  const step=S.candidate?"pin":"list";
+  if(step==="pin")return `<div class="content"><div class="page" style="align-items:stretch">
+    <div class="card"><b>${esc(S.candidate.name)}</b><div style="font-size:13px;color:var(--dim);margin-top:4px">Enter the 4-digit confirm code shown at the top-right of your karaoke screen.</div></div>
+    <div class="pin">${[0,1,2,3].map(i=>`<i class="${S.pin.length===i?"cur":""}">${S.pin[i]?"•":""}</i>`).join("")}</div>
+    <p style="text-align:center">Demo box: the code is <b style="color:var(--cyan)">${S.candidate.code}</b></p>
+    ${keypad("p")}<button class="btn ghost" data-act="pcancel">Back</button></div></div>`;
+  return `<div class="content"><div class="page">
+   <p>Select your karaoke name. Make sure your phone is on the same router as the karaoke.</p>
+   ${S.scanning?`<div style="padding:30px"><div class="spin"></div></div>`:PLAYERS.filter(p=>p.id===S.model).map(p=>`<button class="pl" data-act="pickplayer" data-id="${p.id}">${ic("tv")}<div><div class="n">${p.name}${p.pro?'<span class="tag">'+(p.id==="p4k"?"4K":"")+"</span>":""}</div><div class="s">${p.sub}</div></div></button>`).join("")}
+   <div class="grid2"><button class="btn ghost" data-act="scan">${ic("wifi")} Search player</button><button class="btn ghost" data-act="qrscan">${ic("qr")} Scan QR</button></div>
+   ${S.player?`<button class="btn ghost" data-act="disconnect">Disconnect</button>`:""}</div></div>`;
+}
+function vNetwork(){
+  return `<div class="content"><div class="page"><div class="card row"><div style="flex:1"><div>AP mode</div><div style="font-size:12px;color:var(--dim)">Connect straight to the karaoke's own wifi, no router needed.</div></div><button class="sw" role="switch" aria-checked="${S.cfg.ap}" data-act="tog" data-k="ap" aria-label="AP mode"></button></div>
+  <div class="kv"><span>Karaoke wifi</span><span>${S.player?S.player.name:"—"}</span></div><div class="kv"><span>Router</span><span>${S.cfg.ap?"—":"Home-WiFi-5G"}</span></div></div></div>`;
+}
+function vLang(){return `<div class="content"><div class="page">${["English","한국어","Filipino","日本語","中文","Español"].map(l=>`<button class="pl" data-act="lang" data-l="${l}"><div class="n" style="flex:1">${l}</div>${S.cfg.lang===l?ic("check"):""}</button>`).join("")}<p>Menu text stays in English in this demo; the setting is remembered for the box.</p></div></div>`}
+function vInfo(kind){
+  const p=S.player;
+  const rows={firmware:[["Player",p?p.name:"—"],["Model",p?p.model:"—"],["Firmware",p?(p.pro?"2.4.18":"1.8.3"):"—"],["Video output",p&&p.id==="p4k"?"3840 × 2160 (4K)":"1920 × 1080"]],
+   songdata:[["Songs",SONGS.length],["Last update","2026-11-20"],["Regions",REG.length],["Favorites",S.favs.size]],
+   appinfo:[["App","Smart KTV Piano 4K"],["Version","1.0.0"],["Simulated box","Yes (demo)"]]}[kind];
+  return `<div class="content"><div class="page">${rows.map(r=>`<div class="kv"><span>${r[0]}</span><span>${esc(r[1])}</span></div>`).join("")}</div></div>`;
+}
+function vNews(){return `<div class="content"><div class="page">${[["Piano 4K support","Connect a Piano 4K player to unlock sound and effects, scoring and 4K output."],["Score board","Every scored song is saved to the board on this device."],["Recordings","Record a take from the bottom bar, then replay it from Record."]].map(n=>`<div class="card"><b>${n[0]}</b><p style="margin-top:4px">${n[1]}</p></div>`).join("")}</div></div>`}
+
+const linkIc=()=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path transform="translate(0,-2)" d="${P.wifi}"/><rect x="3" y="20" width="18" height="2"/></svg>`;
+const isPlat=()=>S.model==="p4k";
+const linkState=()=>S.player?{n:S.player.name,s:"Connected"}:{n:(PLAYERS.find(p=>p.id===S.model)||{}).name||"Player",s:"Try Connect"};
+const nowText=()=>S.now?`${S.now.no} ${esc(S.now.t)}`:"Please Select a Song";
+const firstLetter=t=>((t.replace(/^[^A-Za-z0-9]+/,"")[0])||"#").toUpperCase();
+function platList(){
+  let l=SONGS.filter(x=>({all:1,training:x.type==="train",chorus:x.type==="chorus",regional:x.g==="regional",gospel:x.g==="gospel",kids:x.g==="kids",favorite:S.favs.has(x.no)})[S.pgenre]);
+  if(S.pcountry)l=l.filter(x=>x.r===S.pcountry);
+  if(S.pvol)l=l.filter(x=>String(x.vol)===S.pvol);
+  const q=(S.pq||"").trim().toLowerCase();if(q)l=l.filter(x=>(x.t+" "+x.a+" "+x.no).toLowerCase().includes(q));
+  const k=S.psort;return l.sort((a,b)=>k==="number"?a.no-b.no:k==="artist"?a.a.localeCompare(b.a):a.t.localeCompare(b.t,undefined,{sensitivity:"base"}));
+}
+function pRows(){
+  const l=platList(),seen=new Set();
+  if(!l.length)return `<li style="padding:50px 24px;text-align:center;color:#555">${S.pgenre==="favorite"?"No favorites yet. Tap a heart.":"No songs found."}</li>`;
+  return l.map(x=>{const L=firstLetter(x.t),first=!seen.has(L)&&S.psort==="title";seen.add(L);const f=S.favs.has(x.no);
+   return `<li${first?` data-letter="${L}"`:""}><div class="pr" role="button" tabindex="0" data-act="prow" data-no="${x.no}"><div class="no">${x.no}</div><div class="bdg ${x.type}">${x.type.toUpperCase()}</div><div class="tx"><div class="t">${esc(x.t)}</div><div class="a">${esc(x.a)}</div></div>
+   <button class="hrt" data-act="fav" data-no="${x.no}" aria-label="Favorite" style="${f?"":""}">${ic(f?"heartf":"heart")}FAVORITE</button></div></li>`}).join("");
+}
+function pHome(){
+  const ls=linkState();
+  const sel=(key,opts,ph)=>`<div class="psel"><select data-sel="${key}" aria-label="${ph}">${opts.map(o=>`<option value="${o[0]}"${S[key]===o[0]?" selected":""}>${o[1]}</option>`).join("")}</select></div>`;
+  const tabs=[["all","All"],["training","Training"],["chorus","Chorus"],["regional","Regional"],["gospel","Gospel"],["kids","Kids"],["favorite","Favorite"]];
+  return `<div class="phead">
+   <div class="prow"><button class="ib" data-act="drawer" aria-label="Menu">${ic("menu")}</button><div class="wm"><span>SMART KTV</span><small>PIANO 4K</small></div>
+    <button class="linkb" data-act="go" data-v="connect" aria-label="Connect player">${linkIc()}<span><b>${esc(ls.n)}</b><span>${ls.s}</span></span></button>
+    <button class="ib" data-act="go" data-v="reserved" aria-label="Reserved songs">${ic("note")}${S.queue.length+(S.now?1:0)?`<span class="badge">${S.queue.length+(S.now?1:0)}</span>`:""}</button></div>
+   <div class="prow"><button class="ib" data-act="monitor" aria-label="Monitor">${ic("tv")}</button><button class="pnow" data-act="playpause"><span class="circ">${ic(S.playing?"pause":"play")}</span><span>${nowText()}</span></button>
+    ${sel("pcountry",[["","COUNTRY"],...REG.map(r=>[r[0],r[1].toUpperCase()])],"Country")}<button class="ib" data-act="go" data-v="remote" aria-label="Remote control">${ic("grid")}</button></div>
+   <div class="prow"><span style="display:grid;place-items:center;width:30px">${ic("mic")}</span><input class="pq" id="pq" type="text" placeholder="Search" value="${esc(S.pq)}" autocomplete="off" aria-label="Search songs">
+    ${sel("psort",[["title","TITLE"],["artist","ARTIST"],["number","NUMBER"]],"Sort")}${sel("pvol",[["","VOL"],["1","VOL 1"],["2","VOL 2"],["3","VOL 3"]],"Volume")}</div></div>
+   <div class="pwrap"><ul class="plist" id="plist">${pRows()}</ul>
+    <div class="rail" aria-label="Jump to letter">${"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(c=>`<button data-act="alpha" data-l="${c}" aria-label="${c}">${c}</button>`).join("")}</div></div>
+   <div class="gtabs" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${S.pgenre===t[0]}" data-act="pgenre" data-k="${t[0]}">${t[1]}</button>`).join("")}</div>`;
+}
+function pReserved(){
+  const ls=linkState(),n=S.queue.length+(S.now?1:0);
+  const rows=[];
+  if(S.now)rows.push(`<li><div class="pr" style="background:#eef1fb"><div class="no">▶</div><div class="tx"><div class="t">${esc(S.now.t)}</div><div class="a">${esc(S.now.a)} · ${fmt(S.pos)} / ${fmt(S.now.dur)}</div></div><button class="ib" style="color:#20263a" data-act="playpause" aria-label="Play or pause">${ic(S.playing?"pause":"play")}</button><button class="ib" style="color:#20263a" data-act="next" aria-label="Skip">${ic("next")}</button></div></li>`);
+  S.queue.forEach((x,i)=>rows.push(`<li><div class="pr"><div class="no">${x.no}</div><div class="bdg ${x.type||"midi"}">${(x.type||"midi").toUpperCase()}</div><div class="tx"><div class="t">${esc(x.t)}</div><div class="a">${esc(x.a)}</div></div>
+   <button class="ib" style="color:#20263a" data-act="qup" data-i="${i}" aria-label="Move up">${ic("up")}</button><button class="ib" style="color:#20263a" data-act="qdown" data-i="${i}" aria-label="Move down">${ic("down")}</button><button class="ib" style="color:#b32d2d" data-act="qdel" data-i="${i}" aria-label="Remove">${ic("del")}</button></div></li>`));
+  return `<div class="phead slim"><div class="ptitle"><button class="ib" data-act="back" aria-label="Back">${ic("left")}</button><h1>Reserved Song List</h1></div>
+   <div class="prow"><button class="linkb" style="margin:0" data-act="go" data-v="connect">${linkIc()}<span><b>${esc(ls.n)}</b><span>${ls.s}</span></span></button><button class="pnow" data-act="playpause"><span class="circ">${ic(S.playing?"pause":"play")}</span><span>${nowText()}</span></button></div></div>
+   <div class="pwrap"><ul class="plist" style="padding:0">${rows.join("")||""}</ul></div>
+   <div class="pfoot">${ic("note")}Total ${n} Song(s)</div>`;
+}
+function pRemote(){
+  const c=S.cfg;
+  const num=n=>`<button class="rb num" data-act="r-num" data-n="${n}">${n}</button>`;
+  const pm=(k,l,min,max)=>[`<button class="rb" data-act="adj" data-k="${k}" data-d="1" data-min="${min}" data-max="${max}">${l}<span class="pm">+</span></button>`,`<button class="rb" data-act="adj" data-k="${k}" data-d="-1" data-min="${min}" data-max="${max}">${l}<span class="mn"></span></button>`];
+  const v=pm("vol","Volume",0,10),e=pm("echo","Echo",0,10),t=pm("tempo","Tempo",-6,6),k=pm("key","Key",-6,6),tr=pm("treble","Treble",-6,6),bs=pm("bass","Bass",-6,6);
+  const sn=x=>x>0?"+"+x:x;
+  const s=byNo(S.remoteNo);
+  const scr=S.remoteNo?`${S.remoteNo}<small>${s?esc(s.t)+" · "+esc(s.a):"No song with that number"}</small>`:S.now?`${esc(S.now.t)}<small>${fmt(S.pos)} / ${fmt(S.now.dur)} · Key ${sn(c.key)} · Tempo ${sn(c.tempo)} · Echo ${c.echo} · Vol ${c.vol} · Treble ${sn(c.treble)} · Bass ${sn(c.bass)}</small>`:"Please Select a Song";
+  return `<div class="rdisp"><div class="brand2">${linkIc()}<b>SMART KTV</b><small>REMOTE CONTROL</small></div><div class="rscr" aria-live="polite">${scr}</div></div>
+  <div class="rbody">
+   <div class="rg c4"><button class="rb${c.melody?" on":""}" data-act="melody">Melody</button>${num(1)}${num(2)}${num(3)}
+    <button class="rb${c.vocal?" on":""}" data-act="vocal">Vocal</button>${num(4)}${num(5)}${num(6)}
+    <button class="rb" data-act="gencycle">Male/<br>Female${c.gender!=="orig"?" ("+c.gender+")":""}</button>${num(7)}${num(8)}${num(9)}
+    <button class="rb" data-act="bgv">BGV</button><button class="rb" data-act="pcancel2">Cancel</button>${num(0)}<button class="rb" data-act="r-reserve">Reserve</button></div>
+   <div class="rg c2"><button class="rb" data-act="playpause">Play/Pause<span>${ic(S.playing?"pause":"play")}</span></button><button class="rb" data-act="stop">Stop${ic("stop")}</button>
+    <button class="rb${c.mute?" on":""}" data-act="mute">Mute${ic("mute")}</button><button class="rb" data-act="eq">EQ${ic("eq")}</button></div>
+   <div class="rg c44">${v[0]}${e[0]}${t[0]}${k[0]}${v[1]}${e[1]}${t[1]}${k[1]}</div>
+   <div class="rg c2" aria-label="Tone"><button class="rb" data-act="adj" data-k="treble" data-d="1" data-min="-6" data-max="6">Treble<span class="pm">+</span></button><button class="rb" data-act="adj" data-k="bass" data-d="1" data-min="-6" data-max="6">Bass<span class="pm">+</span></button>
+    <button class="rb" data-act="adj" data-k="treble" data-d="-1" data-min="-6" data-max="6">Treble<span class="mn"></span></button><button class="rb" data-act="adj" data-k="bass" data-d="-1" data-min="-6" data-max="6">Bass<span class="mn"></span></button></div>
+   <div class="rg c2"><button class="rb" data-act="go" data-v="home" style="flex-direction:row">${ic("home")}Home</button><button class="rb" data-act="monitor" style="flex-direction:row">${ic("tv")}Monitor</button></div>
+   <div class="rg"><button class="rb" data-act="clap" aria-label="Applause" style="min-height:74px">${ic("clap")}</button></div></div>`;
+}
+function pConnect(){
+  if(S.candidate)return `<div class="phead slim"><div class="ptitle"><button class="ib" data-act="pcancel" aria-label="Back">${ic("left")}</button><h1>Connect Player</h1></div></div>${vConnect()}`;
+  const model=PLAYERS.filter(p=>p.id===S.model);
+  const saved=model.filter(p=>S.saved.includes(p.id));
+  const found=S.found.map(id=>model.find(p=>p.id===id)).filter(p=>p&&!S.saved.includes(p.id));
+  const card=(p,isSaved)=>`<div class="pcard" role="button" tabindex="0" data-act="pconnect" data-id="${p.id}"><div class="ico">${linkIc()}<div class="box"><i></i><span style="width:14px;height:14px;background:repeating-linear-gradient(90deg,#ddd 0 2px,transparent 2px 4px)"></span></div></div>
+    <div class="nm"><b>${esc(p.name)}</b><span>${p.sub.split("·")[1].trim()}</span></div>
+    <div class="st">${isSaved?`<em>Saved</em><button class="del" data-act="pdel" data-id="${p.id}">${ic("del")}Delete</button>`:`<em style="color:#555">Found</em>`}</div></div>`;
+  return `<div class="phead slim"><div class="ptitle"><button class="ib" data-act="back" aria-label="Back">${ic("left")}</button><h1>Connect Player</h1></div></div>
+   <div class="pconn"><div class="circs">
+    <button data-act="qrscan"><i>${ic("qr")}</i>QR Code</button><button data-act="psearch"><i><svg viewBox="0 0 24 24"><path d="${P.wifi}" transform="translate(0,-1)"/><circle cx="17" cy="15" r="3.4" fill="none" stroke="#14161d" stroke-width="1.6"/></svg></i>Search Player</button><button data-act="go" data-v="network"><i>${ic("cog")}</i>WIFI Setting</button></div>
+    <div style="border-top:1px solid #bbb">${S.ssearch?`<div style="padding:26px"><div class="spin"></div></div>`:""}${saved.map(p=>card(p,true)).join("")}${found.map(p=>card(p,false)).join("")}
+    ${!saved.length&&!found.length&&!S.ssearch?`<p style="padding:24px;color:#555;text-align:center;margin:0;background:#fff">No saved players. Tap Search Player or QR Code.</p>`:""}</div></div>
+   <div class="pfoot" style="padding:14px"></div>`;
+}
+const SI=(d,extra="")=>`<svg viewBox="0 0 24 24" aria-hidden="true">${d}${extra}</svg>`;
+const PI={rec:SI('<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 15h7M9 18h5"/>'),msg:SI('<path d="M3 4h18v12H11l-5 4v-4H3zM7 8h10M7 12h10"/>'),link:`<svg viewBox="0 0 24 24" aria-hidden="true" style="fill:#20263a;stroke:none"><path transform="translate(0,-2)" d="${P.wifi}"/><rect x="3" y="20" width="18" height="2"/></svg>`,
+ globe:SI('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),disc:SI('<ellipse cx="12" cy="15" rx="9" ry="3.5"/><path d="M3 15v3c0 2 4 3.5 9 3.5s9-1.5 9-3.5v-3M9 4v8M9 4l6-1v6"/>'),info:SI('<path d="M12 9v11M10 9h2M10 20h4"/><circle cx="12" cy="5" r="1.2"/>'),doc:SI('<path d="M6 4h11v14H6zM9 8h5M9 11h5M9 14h5M17 8h2v12H8"/>'),ch:SI('<path d="M6 9l6 6 6-6"/>').replace('<svg','<svg class="ch"')};
+function pDrawer(){
+  const it=(ico,t,act,extra="")=>`<button class="pdi" ${act} ${extra}>${PI[ico]}<span class="tx">${t}</span></button>`;
+  const ex=(k,ico,t)=>`<button class="pdi" data-act="pexp" data-k="${k}" aria-expanded="${S.exp===k}">${PI[ico]}<span class="tx">${t}</span>${PI.ch}</button>`;
+  const p=S.player;
+  const langs=["English","한국어","Filipino","日本語","中文","Español"];
+  const body={language:langs.map(l=>`<button class="lg" data-act="lang" data-l="${l}">${l}${S.cfg.lang===l?SI('<path d="M5 12l5 5 9-10"/>'):""}</button>`).join(""),
+   songdata:`<div class="kv"><span>Songs</span><span>${SONGS.length}</span></div><div class="kv"><span>Last update</span><span>2026-11-20</span></div><div class="kv"><span>Favorites</span><span>${S.favs.size}</span></div>`,
+   firmware:`<div class="kv"><span>Player</span><span>${p?esc(p.name):"—"}</span></div><div class="kv"><span>Model</span><span>${p?esc(p.model):"—"}</span></div><div class="kv"><span>Firmware</span><span>${p?"2.4.18":"—"}</span></div><div class="kv"><span>Output</span><span>${p?"3840 × 2160 (4K)":"—"}</span></div>`};
+  const sec=(k,ico,t)=>ex(k,ico,t)+(S.exp===k?`<div class="pdx">${body[k]}</div>`:"");
+  return `<div class="scrim" data-act="drawer"></div><nav class="drawer pd" aria-label="Menu"><button class="pdh" data-act="go" data-v="home" aria-label="Song list"><div class="wm"><span>SMART KTV</span><small>PIANO 4K</small></div></button>
+   <div class="pdl">${it("rec","Recorded Song List",'data-act="go" data-v="record"')}${it("msg","Message",'data-act="go" data-v="message"')}${it("link","Connect Player",'data-act="go" data-v="connect"')}
+   ${sec("language","globe","Language")}${sec("songdata","disc","Song Data Info")}${sec("firmware","info","Firmware Info")}
+   ${it("doc","App Info",'data-act="go" data-v="appinfo"')}${it("doc","NEWS AND UPDATES",'data-act="go" data-v="news"')}</div></nav>`;
+}
+function drawer(){
+  if(isPlat())return pDrawer();
+  const n=(v,i,t)=>`<button class="nav" data-act="go" data-v="${v}" ${S.view===v?'aria-current="true"':""}>${ic(i)}<span>${t}</span></button>`;
+  return `<div class="scrim" data-act="drawer"></div><nav class="drawer"><div class="dh"><b>Smart KTV</b><span>${S.player?esc(S.player.name):"Not connected"}${S.player&&S.player.id==="p4k"?" · 4K":""}</span></div>
+  ${n("home","home","Home")}${n("favorite","star","Favorite song")}${n("message","msg","Message")}${n("record","rec","Record")}${n("usersong","user","User song")}
+  <div class="sep"></div>${n("reserved","list","Reserved song")}${cap()?n("board","clap","Score board"):""}${n("setup","list","Country and model")}${n("connect","tv","Connection")}${n("settings","cog","Settings")}
+  <button class="nav" data-act="exit">${ic("close")}<span>Exit</span></button></nav>`;
+}
+
+function render(soft){
+  if(soft&&["home","remote","reserved"].indexOf(S.view)<0&&!S.toast)return;
+  const act=document.activeElement,typing=act&&(act.tagName==="INPUT"||act.tagName==="TEXTAREA");
+  if(soft&&typing)return;
+  const keepScroll=document.querySelector(".content");const sc=keepScroll?keepScroll.scrollTop:0;
+  const id=act&&act.id,ss=typing?act.selectionStart:0;
+  let html;
+  if(S.view==="splash"){
+    html=`<div class="splash"><div class="circle"><svg viewBox="0 0 24 24" style="width:110px;height:110px;fill:#fff"><path d="${P.mic}"/></svg></div><div class="logo">Smart KTV</div><div style="opacity:.85;letter-spacing:.2em;font-size:13px">PIANO 4K</div></div>`;
+  }else if(S.view==="setup"){html=vSetup();
+  }else if(isPlat()&&{home:1,reserved:1,remote:1,connect:1}[S.view]){html={home:pHome,reserved:pReserved,remote:pRemote,connect:pConnect}[S.view]()+`<div id="dw">${drawer()}</div>`;
+  }else{
+    const V={home:vHome,remote:vRemote,reserved:vReserved,favorite:vFavorite,message:vMessage,record:vRecord,usersong:vUser,score:vScore,board:vBoard,settings:vSettings,connect:vConnect,network:vNetwork,language:vLang,news:vNews,firmware:()=>vInfo("firmware"),songdata:()=>vInfo("songdata"),appinfo:()=>vInfo("appinfo")}[S.view];
+    const showActions=["home","favorite","usersong"].includes(S.view)&&S.sel.size>0&&!(S.view==="home"&&S.tab==="search");
+    html=header()+V()+(showActions?`<div class="actions">
+      <button data-act="a-reserve">${ic("add")}Reserve</button><button data-act="a-first">${ic("up")}1st reserve</button><button data-act="a-play">${ic("play")}Play</button><button data-act="a-stop">${ic("stop")}Stop</button><button data-act="a-rec" style="${S.recording?"color:#ff80ab":""}">${ic("rec")}${S.recording?"Rec on":"Record"}</button></div>`:"")
+      +(S.view==="home"&&S.tab!=="search"&&S.sel.size===0?`<button class="fab" data-act="go" data-v="remote" aria-label="Remote control">${ic("remote")}</button>`:"")
+      +`<div id="dw">${drawer()}</div>`;
+  }
+  $app.className=(S.drawer?"open ":"")+(isPlat()?"plat":"");
+  $app.innerHTML=html+(S.modal?`<div class="modal"><div class="dlg"><div>${S.modal.msg}</div><div class="acts">${S.modal.btns.map((b,i)=>`<button data-act="modal" data-i="${i}">${b[0]}</button>`).join("")}</div></div></div>`:"")+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:"");
+  const c=document.querySelector(".content");if(c&&soft)c.scrollTop=sc;
+  if(id){const e=document.getElementById(id);if(e){e.focus();try{e.setSelectionRange(ss,ss)}catch(_){}}}
+}
+
+/* ---------- events ---------- */
+const sel=()=>[...S.sel].map(byNo);
+function needBox(){if(!S.player){S.modal={msg:"Please connect to a karaoke first.",btns:[["Cancel",()=>{}],["Connect",()=>go("connect")]]};render();return false}return true}
+function addDigit(key,d,max){S[key]=(S[key]+d).slice(0,max)}
+function onAct(el,e){
+  const a=el.dataset.act,d=el.dataset;
+  switch(a){
+   case"drawer":S.drawer=!S.drawer;render();break;
+   case"back":back();break;
+   case"go":if(d.v==="home"){hist.length=0;S.view="home";S.drawer=false;render()}else go(d.v);break;
+   case"tab-search":S.view="home";S.tab="search";S.drawer=false;render();break;
+   case"tab":S.tab=d.k;render();break;
+   case"pick":S.sel.has(d.no)?S.sel.delete(d.no):S.sel.add(d.no);render(true);break;
+   case"fav":e.stopPropagation();S.favs.has(d.no)?S.favs.delete(d.no):S.favs.add(d.no);save();render(true);break;
+   case"a-reserve":if(!needBox())break;reserve(sel(),false);toast(`${S.sel.size} song(s) reserved`);S.sel.clear();break;
+   case"a-first":if(!needBox())break;reserve(sel(),true);toast("Reserved as next song");S.sel.clear();break;
+   case"a-play":if(!needBox())break;{const s=sel();S.queue.unshift(...s.map(x=>({...x,rec:S.recording,id:Math.random().toString(36).slice(2)})));startNext();S.sel.clear();toast("Playing")}break;
+   case"a-stop":if(!needBox())break;S.now=null;S.playing=false;S.pos=0;toast("Stopped");break;
+   case"a-rec":case"rec":if(!needBox())break;S.recording=!S.recording;toast(S.recording?"Recording on: reserved songs will be recorded":"Recording off");break;
+   case"s-num":addDigit("searchNo",d.n,5);render();break;case"s-clear":S.searchNo="";render();break;case"s-back":S.searchNo=S.searchNo.slice(0,-1);render();break;
+   case"s-reserve":case"s-first":if(!needBox())break;{const s=byNo(S.searchNo);if(!s){toast("No song with that number");break}reserve([s],a==="s-first");toast(`Reserved ${s.t}`);S.searchNo=""}break;
+   case"r-num":addDigit("remoteNo",d.n,5);render();break;case"r-clear":S.remoteNo="";render();break;case"r-back":S.remoteNo=S.remoteNo.slice(0,-1);render();break;
+   case"r-reserve":case"r-first":if(!needBox())break;{const s=byNo(S.remoteNo);if(!s){toast("Enter a valid song number");break}reserve([s],a==="r-first");toast(`Reserved ${s.t}`);S.remoteNo=""}break;
+   case"r-cancel":if(S.queue.length){const x=S.queue.pop();toast(`Removed ${x.t}`)}else toast("Nothing to cancel");break;
+   case"rtab":S.remoteTab=d.k;render();break;
+   case"nav":toast({up:"Up",down:"Down",left:"Left",right:"Right",ok:"OK"}[d.d]);break;
+   case"playpause":if(!needBox())break;if(!S.now){startNext();if(!S.now){toast("No reserved song")}}else S.playing=!S.playing;render();break;
+   case"stop":S.now=null;S.playing=false;S.pos=0;render();break;
+   case"next":if(S.now){S.now.rec&&0;startNext();toast(S.now?"Next song":"End of list")}else toast("Nothing playing");break;
+   case"prev":if(S.now){S.pos=0;toast("Restarted")}break;
+   case"mute":S.cfg.mute=!S.cfg.mute;render();break;
+   case"bgv":{const m=["video","photo","cam"];S.cfg.bgv=m[(m.indexOf(S.cfg.bgv)+1)%3];toast("Background: "+S.cfg.bgv)}break;
+   case"bgvmode":S.cfg.bgv=d.k;render();break;
+   case"adj":{const k=d.k,mn=+(d.min??0),mx=+(d.max??15);S.cfg[k]=Math.max(mn,Math.min(mx,S.cfg[k]+ +d.d));render(true)}break;
+   case"gender":S.cfg.gender=d.k;render();break;
+   case"vocal":S.cfg.vocal=!S.cfg.vocal;render();break;
+   case"clap":toast("Applause!");break;
+   case"repeat":S.cfg.repeat=d.k;render();break;
+   case"tog":S.cfg[d.k]=!S.cfg[d.k];render();break;
+   case"lang":S.cfg.lang=d.l;toast("Language: "+d.l);break;
+   case"qup":{const i=+d.i;if(i>0){[S.queue[i-1],S.queue[i]]=[S.queue[i],S.queue[i-1]];render()}}break;
+   case"qdown":{const i=+d.i;if(i<S.queue.length-1){[S.queue[i+1],S.queue[i]]=[S.queue[i],S.queue[i+1]];render()}}break;
+   case"qdel":S.queue.splice(+d.i,1);render();break;
+   case"qclear":S.queue=[];render();break;
+   case"qshuffle":S.queue.sort(()=>Math.random()-.5);render();break;
+   case"favmode":S.favMode=d.k;render();break;
+   case"mtab":S.msgTab=d.k;render();break;
+   case"sendmsg":if(!needBox())break;if(!(S.msg||"").trim()){toast("Type a message first");break}toast("Message sent to screen");S.msg="";break;
+   case"pickphoto":S.photo=+d.i;render();break;
+   case"sendphoto":if(!needBox())break;if(S.photo==null){toast("Choose a photo first");break}toast("Photo sent to screen");break;
+   case"recplay":{if(!needBox())break;const r=S.recs[+d.i];S.queue.unshift({no:r.no,t:r.t+" (recording)",a:r.a,dur:r.dur,id:"x"+Math.random()});startNext();toast("Playing recording");break}
+   case"recdel":S.recs.splice(+d.i,1);save();render();break;
+   case"uadd":{const v=(document.getElementById("un").value||"").trim();if(!byNo(v)){toast("No song with that number");break}if(!S.users.includes(v))S.users.push(v);save();render()}break;
+   case"udel":e.stopPropagation();S.users=S.users.filter(x=>x!==d.no);save();render();break;
+   case"scan":S.scanning=true;render();setTimeout(()=>{S.scanning=false;render()},1200);break;
+   case"qrscan":{const q=PLAYERS.find(p=>p.id===S.model);S.candidate=q;S.pin="";toast("QR code read: "+q.name)};break;
+   case"pickplayer":S.candidate=PLAYERS.find(p=>p.id===d.id);S.pin="";render();break;
+   case"pcancel":S.candidate=null;render();break;
+   case"p-num":S.pin=(S.pin+d.n).slice(0,4);if(S.pin.length===4){if(S.pin===S.candidate.code){S.player=S.candidate;if(!S.saved.includes(S.player.id)){S.saved.push(S.player.id);save()}S.candidate=null;S.pin="";S.remoteTab="screen";hist.length=0;S.view="home";S.tab=S.country;toast("Connected to "+S.player.name)}else{S.pin="";toast("Wrong code, try again")}}else render();break;
+   case"p-clear":S.pin="";render();break;case"p-back":S.pin=S.pin.slice(0,-1);render();break;
+   case"setupnext":{const c=document.getElementById("country"),m=document.getElementById("model");S.country=c.value;S.model=m.value;S.player=null;S.tab=S.country;hist.length=0;S.view="connect";render()}break;
+   case"pexp":S.exp=S.exp===d.k?"":d.k;render();break;
+   case"pgenre":S.pgenre=d.k;render();break;
+   case"alpha":{const t=document.querySelector(`#plist [data-letter="${d.l}"]`);if(t)t.scrollIntoView({block:"start"});else toast("No songs under "+d.l)}break;
+   case"prow":{if(!needBox())break;const x=byNo(d.no);S.modal={msg:`<b>${x.no}</b> ${esc(x.t)}<br><span style="color:var(--dim)">${esc(x.a)}</span>`,btns:[["Cancel",()=>{}],["Play next",()=>{reserve([x],true);toast("Playing next")}],["Reserve",()=>{reserve([x]);toast("Reserved")}]]};render()}break;
+   case"monitor":toast("Monitor: screen mirror toggled");break;
+   case"melody":S.cfg.melody=!S.cfg.melody;toast("Melody guide "+(S.cfg.melody?"on":"off"));break;
+   case"gencycle":{const o=["orig","male","female"];S.cfg.gender=o[(o.indexOf(S.cfg.gender)+1)%3];render()}break;
+   case"pcancel2":if(S.remoteNo){S.remoteNo="";render()}else if(S.queue.length){const x=S.queue.pop();toast("Removed "+x.t)}else toast("Nothing to cancel");break;
+   case"eq":S.modal={msg:"<b>Equalizer</b><br><span style='color:var(--dim)'>Current: "+(S.cfg.eq||"Normal")+"</span>",btns:[["Normal",()=>{Object.assign(S.cfg,{eq:"Normal",treble:0,bass:0})}],["Pop",()=>{Object.assign(S.cfg,{eq:"Pop",treble:2,bass:2})}],["Rock",()=>{Object.assign(S.cfg,{eq:"Rock",treble:1,bass:3})}],["Vocal",()=>{Object.assign(S.cfg,{eq:"Vocal boost",treble:2,bass:-1})}]]};render();break;
+   case"psearch":S.ssearch=true;render();setTimeout(()=>{S.ssearch=false;S.found=PLAYERS.filter(p=>p.id===S.model).map(p=>p.id);render()},1200);break;
+   case"pconnect":{const p=PLAYERS.find(x=>x.id===d.id);if(S.saved.includes(p.id)){S.player=p;hist.length=0;S.view="home";toast("Connected to "+p.name)}else{S.candidate=p;S.pin="";render()}}break;
+   case"pdel":e.stopPropagation();S.saved=S.saved.filter(x=>x!==d.id);if(S.player&&S.player.id===d.id){S.player=null}save();render();break;
+   case"disconnect":S.player=null;S.now=null;S.queue=[];S.playing=false;render();break;
+   case"exit":S.drawer=false;S.modal={msg:"Are you sure you want to close the application?",btns:[["No",()=>{}],["Yes",()=>{S.player=null;S.now=null;S.queue=[];S.playing=false;S.view="splash";boot()}]]};render();break;
+   case"modal":{const b=S.modal.btns[+d.i];S.modal=null;render();b[1]()}break;
+  }
+}
+$app.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(el)onAct(el,e)});
+$app.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches(".song[data-act],.np[data-act]")){e.preventDefault();onAct(e.target,e)}});
+$app.addEventListener("input",e=>{
+  if(e.target.id==="q"){S.q=e.target.value;document.getElementById("qres").innerHTML=qres()}
+  if(e.target.id==="msg"){S.msg=e.target.value;document.getElementById("cnt").textContent=S.msg.length+" / 80"}
+  if(e.target.id==="from")S.from=e.target.value;
+  if(e.target.id==="pq"){S.pq=e.target.value;document.getElementById("plist").innerHTML=pRows()}
+});
+$app.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.sel){S[e.target.dataset.sel]=e.target.value;render();return}if(e.target.id==="pf"){S.photos=[...e.target.files].map(f=>URL.createObjectURL(f));S.photo=null;render()}});
+/* swipe between home tabs */
+let tx=null;$app.addEventListener("touchstart",e=>{tx=e.target.closest("#swipe")?e.touches[0].clientX:null},{passive:true});
+$app.addEventListener("touchend",e=>{if(tx==null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(Math.abs(dx)<70)return;const i=TABS.findIndex(t=>t[0]===S.tab),n=TABS[i+(dx<0?1:-1)];if(n){S.tab=n[0];render();const t=document.querySelector(".tab[aria-selected=true]");t&&t.scrollIntoView({inline:"center",block:"nearest"})}});
+
+function boot(){render();setTimeout(()=>{if(S.view==="splash"){S.view="setup";render()}},1400)}
+boot();
+</script>
